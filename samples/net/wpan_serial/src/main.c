@@ -174,13 +174,6 @@ static void interrupt_handler(struct device *dev)
 #ifdef VERBOSE_DEBUG
 		LOG_DBG("");
 #endif
-		if (uart_irq_tx_ready(dev)) {
-#ifdef VERBOSE_DEBUG
-			LOG_DBG("TX ready interrupt");
-#endif
-
-			k_sem_give(&tx_sem);
-		}
 
 		if (uart_irq_rx_ready(dev)) {
 			unsigned char byte;
@@ -418,14 +411,14 @@ static void tx_thread(void)
 	LOG_DBG("TX thread started");
 
 	/* Allow to send one TX */
-	k_sem_give(&tx_sem);
+	// k_sem_give(&tx_sem);
 
 	while (1) {
 		struct net_pkt *pkt;
 		struct net_buf *buf;
 		size_t len;
 
-		k_sem_take(&tx_sem, K_FOREVER);
+		// k_sem_take(&tx_sem, K_FOREVER);
 
 		pkt = k_fifo_get(&tx_queue, K_FOREVER);
 		buf = net_buf_frag_last(pkt->buffer);
@@ -440,13 +433,15 @@ static void tx_thread(void)
 
 		/* SLIP encode and send */
 		len = slip_buffer(slip_buf, buf);
-		uart_fifo_fill(uart_dev, slip_buf, len);
+
+		/* send it in polling mode */
+		for(int i=0; i<len; i++) {
+			uart_poll_out(uart_dev, slip_buf[i]);
+		}
 
 		net_pkt_unref(pkt);
 
-#if 0
 		k_yield();
-#endif
 	}
 }
 
@@ -494,7 +489,7 @@ static bool init_ieee802154(void)
 {
 	LOG_INF("Initialize ieee802.15.4");
 
-	ieee802154_dev = device_get_binding(CONFIG_IEEE802154_CC2520_DRV_NAME);
+	ieee802154_dev = device_get_binding(CONFIG_NET_CONFIG_IEEE802154_DEV_NAME);
 	if (!ieee802154_dev) {
 		LOG_ERR("Cannot get CC250 device");
 		return false;
@@ -565,31 +560,16 @@ void main(void)
 	u32_t baudrate, dtr = 0U;
 	int ret;
 
-	dev = device_get_binding(CONFIG_CDC_ACM_PORT_NAME_0);
+	// this is the where the host conects
+	dev = device_get_binding("UART_1");
 	if (!dev) {
-		LOG_ERR("CDC ACM device not found");
+		LOG_ERR("Serial device not found");
 		return;
-	}
-
-	LOG_DBG("Wait for DTR");
-
-	while (1) {
-		uart_line_ctrl_get(dev, LINE_CTRL_DTR, &dtr);
-		if (dtr)
-			break;
 	}
 
 	uart_dev = dev;
 
-	LOG_DBG("DTR set, continue");
-
-	ret = uart_line_ctrl_get(dev, LINE_CTRL_BAUD_RATE, &baudrate);
-	if (ret)
-		printk("Failed to get baudrate, ret code %d\n", ret);
-	else
-		printk("Baudrate detected: %d\n", baudrate);
-
-	LOG_INF("USB serial initialized");
+	LOG_INF("Serial device initialized");
 
 	/* Initialize net_pkt */
 	net_pkt_init();
@@ -610,7 +590,4 @@ void main(void)
 
 	/* Enable rx interrupts */
 	uart_irq_rx_enable(dev);
-
-	/* Enable tx interrupts */
-	uart_irq_tx_enable(dev);
 }
