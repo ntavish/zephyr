@@ -23,7 +23,8 @@ extern "C" {
 
 #ifndef _ASMLANGUAGE
 
-extern K_THREAD_STACK_DEFINE(_interrupt_stack, CONFIG_ISR_STACK_SIZE);
+extern K_THREAD_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS,
+				   CONFIG_ISR_STACK_SIZE);
 
 /**
  * @brief Perform architecture-specific initialization
@@ -37,12 +38,13 @@ extern K_THREAD_STACK_DEFINE(_interrupt_stack, CONFIG_ISR_STACK_SIZE);
 static ALWAYS_INLINE void arch_kernel_init(void)
 {
 	/* It's safe to set it here. Even though we use
-	 * _interrupt_stack for kernel initialization, we currently do
+	 * z_interrupt_stacks for kernel initialization, we currently do
 	 * not enable Trap while in exception handler.  We do enable
 	 * it in interrupt handler, though.
 	 */
 	_kernel.irq_stack =
-		Z_THREAD_STACK_BUFFER(_interrupt_stack) + CONFIG_ISR_STACK_SIZE;
+		Z_THREAD_STACK_BUFFER(z_interrupt_stacks[0]) +
+				      CONFIG_ISR_STACK_SIZE;
 }
 
 /* SPARC currently supports USE_SWITCH and USE_SWITCH only */

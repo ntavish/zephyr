@@ -29,7 +29,8 @@
 extern "C" {
 #endif
 
-extern K_THREAD_STACK_DEFINE(_interrupt_stack, CONFIG_ISR_STACK_SIZE);
+extern K_THREAD_STACK_ARRAY_DEFINE(z_interrupt_stacks, CONFIG_MP_NUM_CPUS,
+				   CONFIG_ISR_STACK_SIZE);
 
 #ifdef __cplusplus
 }

@@ -19,7 +19,7 @@ GTEXT(_isr_wrapper)
 GTEXT(nmi_handler)
 GTEXT(fault_handler)
 
-GDATA(_interrupt_stack)
+GDATA(z_interrupt_stacks)
 
 #define RESET_ENTRY(handler)   	 \
 	ba handler;                 \
@@ -241,14 +241,14 @@ SECTION_FUNC(text, reset_handler)
 	nop                     /* We assume three delay instructions */
 	nop
 
-	/* Initialize the stack pointer.  We use _interrupt_stack for
+	/* Initialize the stack pointer.  We use z_interrupt_stacks for
 	 * kernel initialization.  The stack starts at
-	 * _interrupt_stack + CONFIG_ISR_STACK_SIZE.  Because "add"
+	 * z_interrupt_stacks + CONFIG_ISR_STACK_SIZE.  Because "add"
 	 * instruction can only take simm13, we load both the address
-	 * of _interrupt_stack and the size of it on registers, then
+	 * of z_interrupt_stacks and the size of it on registers, then
 	 * add them together.  We first initialize %fp here and then
 	 * initialize %sp later. */
-	set _interrupt_stack, %g1       /* Load _interrut_stack to %g1 */
+	set z_interrupt_stacks, %g1       /* Load _interrut_stack to %g1 */
 	set CONFIG_ISR_STACK_SIZE, %g2  /* Load stack size */
 	add %g1, %g2, %fp               /* Add them to calculate the end of */
 					/* the stack as %fp */
